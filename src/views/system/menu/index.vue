@@ -148,11 +148,34 @@
           </el-radio-group>
         </el-form-item>
 
+        <!-- 按钮子类型选择器 -->
+        <el-form-item v-if="formData.type === MenuTypeEnum.BUTTON" label="按钮类型">
+          <el-radio-group v-model="formData.buttonSubType" @change="handleButtonSubTypeChange">
+            <el-radio :value="ButtonSubTypeEnum.NORMAL">普通按钮</el-radio>
+            <el-radio :value="ButtonSubTypeEnum.DRILL_DOWN">
+              <div class="flex-y-center">
+                下钻页面
+                <el-tooltip placement="bottom" effect="light">
+                  <template #content>
+                    仅用于标识此按钮将用于页面下钻，不代表配置此权限的按钮自动具有下钻功能，具体功能由开发人员决定。
+                  </template>
+                  <el-icon class="ml-1 cursor-pointer">
+                    <QuestionFilled />
+                  </el-icon>
+                </el-tooltip>
+              </div>
+            </el-radio>
+          </el-radio-group>
+        </el-form-item>
+
         <el-form-item v-if="formData.type == MenuTypeEnum.EXTLINK" label="外链地址" prop="path">
           <el-input v-model="formData.routePath" placeholder="请输入外链完整路径" />
         </el-form-item>
 
-        <el-form-item v-if="formData.type == MenuTypeEnum.MENU" prop="routeName">
+        <el-form-item
+          v-if="formData.type == MenuTypeEnum.MENU || isDrillDownButton"
+          prop="routeName"
+        >
           <template #label>
             <div class="flex-y-center">
               路由名称
@@ -170,7 +193,11 @@
         </el-form-item>
 
         <el-form-item
-          v-if="formData.type == MenuTypeEnum.CATALOG || formData.type == MenuTypeEnum.MENU"
+          v-if="
+            formData.type == MenuTypeEnum.CATALOG ||
+            formData.type == MenuTypeEnum.MENU ||
+            isDrillDownButton
+          "
           prop="routePath"
         >
           <template #label>
@@ -195,7 +222,10 @@
           <el-input v-else v-model="formData.routePath" placeholder="user" />
         </el-form-item>
 
-        <el-form-item v-if="formData.type == MenuTypeEnum.MENU" prop="component">
+        <el-form-item
+          v-if="formData.type == MenuTypeEnum.MENU || isDrillDownButton"
+          prop="component"
+        >
           <template #label>
             <div class="flex-y-center">
               组件路径
@@ -211,12 +241,16 @@
           </template>
 
           <el-input v-model="formData.component" placeholder="system/user/index" style="width: 95%">
-            <template v-if="formData.type == MenuTypeEnum.MENU" #prepend>src/views/</template>
-            <template v-if="formData.type == MenuTypeEnum.MENU" #append>.vue</template>
+            <template v-if="formData.type == MenuTypeEnum.MENU || isDrillDownButton" #prepend>
+              src/views/
+            </template>
+            <template v-if="formData.type == MenuTypeEnum.MENU || isDrillDownButton" #append>
+              .vue
+            </template>
           </el-input>
         </el-form-item>
 
-        <el-form-item v-if="formData.type == MenuTypeEnum.MENU">
+        <el-form-item v-if="formData.type == MenuTypeEnum.MENU || isDrillDownButton">
           <template #label>
             <div class="flex-y-center">
               路由参数
@@ -264,15 +298,23 @@
           </div>
         </el-form-item>
 
-        <el-form-item v-if="formData.type !== MenuTypeEnum.BUTTON" prop="visible" label="显示状态">
-          <el-radio-group v-model="formData.visible">
+        <el-form-item
+          v-if="formData.type !== MenuTypeEnum.BUTTON || isDrillDownButton"
+          prop="visible"
+          label="显示状态"
+        >
+          <el-radio-group v-model="formData.visible" :disabled="isDrillDownButton">
             <el-radio :value="1">显示</el-radio>
             <el-radio :value="0">隐藏</el-radio>
           </el-radio-group>
         </el-form-item>
 
         <el-form-item
-          v-if="formData.type === MenuTypeEnum.CATALOG || formData.type === MenuTypeEnum.MENU"
+          v-if="
+            formData.type === MenuTypeEnum.CATALOG ||
+            formData.type === MenuTypeEnum.MENU ||
+            isDrillDownButton
+          "
         >
           <template #label>
             <div class="flex-y-center">
@@ -292,14 +334,17 @@
             </div>
           </template>
 
-          <el-radio-group v-model="formData.alwaysShow">
+          <el-radio-group v-model="formData.alwaysShow" :disabled="isDrillDownButton">
             <el-radio :value="1">是</el-radio>
             <el-radio :value="0">否</el-radio>
           </el-radio-group>
         </el-form-item>
 
-        <el-form-item v-if="formData.type === MenuTypeEnum.MENU" label="缓存页面">
-          <el-radio-group v-model="formData.keepAlive">
+        <el-form-item
+          v-if="formData.type === MenuTypeEnum.MENU || isDrillDownButton"
+          label="缓存页面"
+        >
+          <el-radio-group v-model="formData.keepAlive" :disabled="isDrillDownButton">
             <el-radio :value="1">开启</el-radio>
             <el-radio :value="0">关闭</el-radio>
           </el-radio-group>
@@ -344,7 +389,7 @@ import { useAppStore } from "@/store/modules/app-store";
 import { DeviceEnum } from "@/enums/settings/device.enum";
 
 import MenuAPI, { MenuQuery, MenuForm, MenuVO } from "@/api/system/menu-api";
-import { MenuTypeEnum } from "@/enums/system/menu.enum";
+import { MenuTypeEnum, ButtonSubTypeEnum } from "@/enums/system/menu.enum";
 
 defineOptions({
   name: "SysMenu",
@@ -363,6 +408,14 @@ const dialog = reactive({
 });
 
 const drawerSize = computed(() => (appStore.device === DeviceEnum.DESKTOP ? "600px" : "90%"));
+
+// 判断是否为下钻按钮
+const isDrillDownButton = computed(
+  () =>
+    formData.value.type === MenuTypeEnum.BUTTON &&
+    formData.value.buttonSubType === ButtonSubTypeEnum.DRILL_DOWN
+);
+
 // 查询参数
 const queryParams = reactive<MenuQuery>({});
 // 菜单表格数据
@@ -379,6 +432,7 @@ const initialMenuFormData = ref<MenuForm>({
   alwaysShow: 0,
   keepAlive: 1,
   params: [],
+  buttonSubType: undefined,
 });
 // 菜单表单数据
 const formData = ref({ ...initialMenuFormData.value });
@@ -458,7 +512,33 @@ function handleMenuTypeChange() {
         formData.value.routePath = initialMenuFormData.value.routePath;
         formData.value.component = initialMenuFormData.value.component;
       }
+    } else if (formData.value.type === MenuTypeEnum.BUTTON) {
+      // 按钮类型：设置默认子类型
+      formData.value.buttonSubType = ButtonSubTypeEnum.NORMAL;
+    } else {
+      // 非按钮类型：清空子类型
+      formData.value.buttonSubType = undefined;
     }
+  }
+}
+
+// 按钮子类型切换
+function handleButtonSubTypeChange() {
+  if (formData.value.buttonSubType === ButtonSubTypeEnum.NORMAL) {
+    // 普通按钮：清空路由相关字段
+    formData.value.routeName = "";
+    formData.value.routePath = "";
+    formData.value.component = "";
+    if (!formData.value.params) {
+      formData.value.params = [];
+    }
+    formData.value.visible = 1;
+    formData.value.alwaysShow = undefined;
+    formData.value.keepAlive = undefined;
+  } else if (formData.value.buttonSubType === ButtonSubTypeEnum.DRILL_DOWN) {
+    formData.value.visible = 0;
+    formData.value.alwaysShow = 0;
+    formData.value.keepAlive = 0;
   }
 }
 
@@ -532,6 +612,7 @@ function resetForm() {
     alwaysShow: 0,
     keepAlive: 1,
     params: [],
+    buttonSubType: undefined,
   };
 }
 

@@ -102,6 +102,8 @@ export interface MenuForm {
   alwaysShow?: number;
   /** 其他参数 */
   params?: KeyValue[];
+  /** 按钮子类型（normal-普通按钮，drill-下钻页面） */
+  buttonSubType?: string;
 }
 interface KeyValue {
   key: string;

@@ -5,3 +5,9 @@ export enum MenuTypeEnum {
   BUTTON = 4, // 按钮
   EXTLINK = 3, // 外链
 }
+
+// 按钮子类型枚举
+export enum ButtonSubTypeEnum {
+  NORMAL = "normal", // 普通按钮
+  DRILL_DOWN = "drill", // 下钻页面
+}
