@@ -50,5 +50,11 @@ declare module "vue-router" {
      * @default false
      */
     breadcrumb?: boolean;
+
+    /**
+     * 指定高亮的菜单项（用于隐藏菜单的高亮显示）
+     * @example '/system/user'
+     */
+    activeMenu?: string;
   }
 }

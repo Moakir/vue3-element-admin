@@ -78,16 +78,28 @@ const menuThemeProps = computed(() => {
   };
 });
 
-// 计算当前激活的菜单项
+// 计算当前激活的菜单项（配合路由守卫的自动处理）
 const activeMenuPath = computed((): string => {
-  const { meta, path } = currentRoute;
+  const { meta, path, query } = currentRoute;
 
-  // 如果路由meta中设置了activeMenu，则使用它（用于处理一些特殊情况，如详情页）
+  // 1. 最高优先级：路由meta中明确指定的activeMenu
   if (meta?.activeMenu && typeof meta.activeMenu === "string") {
     return meta.activeMenu;
   }
 
-  // 否则使用当前路由路径
+  // 2. 对于隐藏菜单或详情页，路由守卫已经自动处理了 from 参数
+  if (meta?.hidden) {
+    // 2.1 使用路由守卫自动添加的 from 参数
+    if (query.from && typeof query.from === "string") {
+      console.log("query.from", query.from);
+      return query.from;
+    }
+
+    // 2.2 兜底：使用当前路径（虽然可能不会高亮，但至少不会报错）
+    return path;
+  }
+
+  // 3. 普通可见菜单，直接使用当前路径
   return path;
 });
 

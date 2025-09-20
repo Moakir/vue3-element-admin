@@ -6,13 +6,14 @@ import { ROLE_ROOT } from "@/constants";
 
 /**
  * 处理根路径重定向逻辑
- * @param routes 路由列表
+ * 使用预构建的路由映射表快速获取首个可访问路由，避免递归查找
+ * @param permissionStore 权限存储实例
  * @returns 重定向配置对象或 null
  */
 function handleRootPathRedirect(
-  routes: RouteRecordRaw[]
+  permissionStore: ReturnType<typeof usePermissionStore>
 ): { name?: string; path?: string; replace: boolean } | null {
-  const firstAccessibleRoute = findFirstAccessibleRoute(routes);
+  const firstAccessibleRoute = permissionStore.getFirstAccessibleRoute();
   if (!firstAccessibleRoute) {
     console.warn("未找到可访问的路由");
     return null;
@@ -23,7 +24,7 @@ function handleRootPathRedirect(
     return null;
   }
   // 优先使用 name 进行导航
-  if (firstAccessibleRoute.name) {
+  if (firstAccessibleRoute.name && typeof firstAccessibleRoute.name === "string") {
     return { name: firstAccessibleRoute.name, replace: true };
   } else {
     return { path: firstAccessibleRoute.path, replace: true };
@@ -31,78 +32,76 @@ function handleRootPathRedirect(
 }
 
 /**
- * 查找首个可访问的路由
- * @param routes 路由列表
- * @returns 首个可访问的路由信息，包含路径和名称，如果没有则返回 null
+ * 处理隐藏页面的 from 参数逻辑
+ * 使用预构建的父级菜单映射表快速获取父级菜单路径，避免复杂的递归查找
+ * @param to 目标路由
+ * @param from 来源路由
+ * @param permissionStore 权限存储实例
+ * @returns 处理后的路由对象，如果无需处理则返回原路由
  */
-function findFirstAccessibleRoute(
-  routes: RouteRecordRaw[]
-): { path: string; name?: string } | null {
-  // 优先查找非隐藏的路由
-  const nonHiddenResult = findFirstRoute(routes, false);
-  if (nonHiddenResult) {
-    return nonHiddenResult;
+function handleHiddenPageFrom(
+  to: RouteLocationNormalized,
+  from: RouteLocationNormalized,
+  permissionStore: ReturnType<typeof usePermissionStore>
+): RouteLocationNormalized {
+  // 如果目标页面不是隐藏页面，直接返回
+  if (!to.meta?.hidden) {
+    return to;
   }
-
-  // 兜底：查找隐藏的路由
-  const hiddenResult = findFirstRoute(routes, true);
-  return hiddenResult;
+  // 如果已经有 from 参数，不重复处理
+  if (to.query.from) {
+    return to;
+  }
+  // 如果有明确的 activeMenu 配置，不需要自动添加 from
+  if (to.meta?.activeMenu) {
+    return to;
+  }
+  // 获取合适的 from 值
+  const fromPath = getAutoFromPath(from, permissionStore);
+  if (!fromPath) {
+    return to;
+  }
+  // 创建带有 from 参数的新路由
+  return {
+    ...to,
+    query: {
+      ...to.query,
+      from: fromPath,
+    },
+  } as RouteLocationNormalized;
 }
-
 /**
- * 查找路由的辅助函数
- * @param routes 路由列表
- * @param includeHidden 是否包含隐藏路由
- * @param parentPath 父路径，用于构建完整路径
+ * 获取自动设置的 from 路径
+ * 使用预构建的父级菜单映射表快速获取父级菜单路径，替代复杂的递归查找
+ * @param from 来源路由
+ * @param permissionStore 权限存储实例
+ * @returns from 路径或 null
  */
-function findFirstRoute(
-  routes: RouteRecordRaw[],
-  includeHidden: boolean,
-  parentPath: string = ""
-): { path: string; name?: string } | null {
-  for (const route of routes) {
-    // 根据 includeHidden 参数决定是否跳过隐藏路由
-    if (!includeHidden && route.meta?.hidden) {
-      continue;
-    }
-
-    // 修复路径构建逻辑
-    let currentPath: string;
-    if (!parentPath) {
-      // 根路径情况
-      currentPath = route.path.startsWith("/") ? route.path : `/${route.path}`;
-    } else {
-      // 子路径情况
-      if (route.path.startsWith("/")) {
-        // 绝对路径直接使用
-        currentPath = route.path;
-      } else {
-        // 相对路径需要拼接
-        currentPath = `${parentPath}/${route.path}`;
-      }
-    }
-
-    // 清理可能的双斜杠
-    currentPath = currentPath.replace(/\/+/g, "/");
-
-    // 如果有子路由，递归查找
-    if (route.children && route.children.length > 0) {
-      const childRoute = findFirstRoute(route.children, includeHidden, currentPath);
-      if (childRoute) {
-        return childRoute;
-      }
-    }
-
-    // 如果是叶子节点且有组件，返回该路由
-    if (route.component && route.path !== "/" && route.path !== "") {
-      return {
-        path: currentPath,
-        name: route.name as string,
-      };
-    }
+function getAutoFromPath(
+  from: RouteLocationNormalized,
+  permissionStore: ReturnType<typeof usePermissionStore>
+): string | null {
+  // 来源是登录页或根路径，不设置 from
+  if (!from.path || from.path === "/" || from.path === "/login") {
+    return null;
   }
+  // 如果来源页面也是隐藏页面，则传递其 from 参数
+  if (from.meta?.hidden) {
+    // 如果来源页面有 from 参数，继续传递
+    if (from.query.from && typeof from.query.from === "string") {
+      return from.query.from;
+    }
 
-  return null;
+    // 如果来源页面有明确的 activeMenu，使用它
+    if (from.meta?.activeMenu && typeof from.meta.activeMenu === "string") {
+      return from.meta.activeMenu;
+    }
+
+    // 使用 PermissionStore 的快速查找方法
+    return permissionStore.getParentMenuByPath(from.path);
+  }
+  // 来源页面是普通可见页面，直接使用其路径
+  return from.path;
 }
 
 export function setupPermission() {
@@ -161,7 +160,7 @@ export function setupPermission() {
 
         // 在路由守卫中添加防循环逻辑
         if (to.path === "/") {
-          const redirectResult = handleRootPathRedirect(permissionStore.routes);
+          const redirectResult = handleRootPathRedirect(permissionStore);
           if (redirectResult) {
             next(redirectResult);
             return;
@@ -176,7 +175,12 @@ export function setupPermission() {
           next("/404");
           return;
         }
-
+        // 新增：自动处理隐藏页面的 from 参数逻辑
+        const enhancedTo = handleHiddenPageFrom(to, from, permissionStore);
+        if (enhancedTo !== to) {
+          next(enhancedTo);
+          return;
+        }
         // 设置页面标题
         const title = (to.params.title as string) || (to.query.title as string);
         if (title) {
