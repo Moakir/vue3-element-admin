@@ -49,7 +49,7 @@ declare module "vue-router" {
      * true 隐藏, false 显示
      * @default false
      */
-    breadcrumb?: boolean;
+    breadcrumb?: boolean | string;
 
     /**
      * 指定高亮的菜单项（用于隐藏菜单的高亮显示）

@@ -30,23 +30,28 @@ const pathCompile = (path: string) => {
 const breadcrumbs = ref<Array<RouteLocationMatched>>([]);
 
 function getBreadcrumb() {
-  let matched = currentRoute.matched.filter((item) => item.meta && item.meta.title);
-  const first = matched[0];
-  if (!isDashboard(first)) {
-    matched = [{ path: "/dashboard", meta: { title: "dashboard" } } as any].concat(matched);
-  }
+  const matched = currentRoute.matched.filter((item) => item.meta && item.meta.title);
+  // const first = matched[0];
+  // if (!isDashboard(first)) {
+  //   matched = [{ path: "/dashboard", meta: { title: "dashboard" } } as any].concat(matched);
+  // }
   breadcrumbs.value = matched.filter((item) => {
-    return item.meta && item.meta.title && item.meta.breadcrumb !== false;
+    return (
+      item.meta &&
+      item.meta.title &&
+      item.meta.breadcrumb !== false &&
+      item.meta.breadcrumb !== "false"
+    );
   });
 }
 
-function isDashboard(route: RouteLocationMatched) {
-  const name = route && route.name;
-  if (!name) {
-    return false;
-  }
-  return name.toString().trim().toLocaleLowerCase() === "Dashboard".toLocaleLowerCase();
-}
+// function isDashboard(route: RouteLocationMatched) {
+//   const name = route && route.name;
+//   if (!name) {
+//     return false;
+//   }
+//   return name.toString().trim().toLocaleLowerCase() === "Dashboard".toLocaleLowerCase();
+// }
 
 function handleLink(item: any) {
   const { redirect, path } = item;
