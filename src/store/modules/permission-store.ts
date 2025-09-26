@@ -319,6 +319,17 @@ const parseDynamicRoutes = (rawRoutes: RouteVO[]): RouteRecordRaw[] => {
             modules[`../../views/error/404.vue`]; // 找不到页面时，返回404页面
     }
 
+    // 解析 meta 中的 params 参数，如果 key 以 meta_ 开头则提升为 meta 参数，并从 params 中删除
+    if (normalizedRoute.meta?.params) {
+      for (const key of Object.keys(normalizedRoute.meta.params as Record<string, string>)) {
+        if (key.startsWith("meta_")) {
+          normalizedRoute.meta[key.replace("meta_", "")] =
+            normalizedRoute.meta.params[key as keyof typeof normalizedRoute.meta.params];
+          delete normalizedRoute.meta.params[key as keyof typeof normalizedRoute.meta.params];
+        }
+      }
+    }
+
     // 递归解析子路由
     if (normalizedRoute.children) {
       normalizedRoute.children = parseDynamicRoutes(route.children);
