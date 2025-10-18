@@ -2,7 +2,6 @@ import type { RouteRecordRaw, RouteLocationNormalized, NavigationGuardNext } fro
 import NProgress from "@/utils/nprogress";
 import router from "@/router";
 import { usePermissionStore, useUserStore } from "@/store";
-import { ROLE_ROOT } from "@/constants";
 
 /**
  * 处理根路径重定向逻辑
@@ -105,7 +104,7 @@ function getAutoFromPath(
 }
 
 export function setupPermission() {
-  const whiteList = ["/login"]; // 无需登录的页面
+  const whiteList = ["/login"];
 
   router.beforeEach(
     async (
@@ -130,18 +129,17 @@ export function setupPermission() {
           return;
         }
 
-        // 已登录且访问登录页，重定向到首页
+        // 已登录登录页重定向
         if (to.path === "/login") {
           next({ path: "/" });
           return;
         }
 
-        // 已登录用户的正常访问
         const permissionStore = usePermissionStore();
         const userStore = useUserStore();
 
-        // 路由未生成则生成
-        if (!permissionStore.isDynamicRoutesGenerated) {
+        // 动态路由生成
+        if (!permissionStore.isRouteGenerated) {
           if (!userStore.userInfo?.roles?.length) {
             await userStore.getUserInfo();
           }
@@ -205,19 +203,4 @@ export function setupPermission() {
   router.afterEach(() => {
     NProgress.done();
   });
-}
-
-/** 判断是否有权限 */
-export function hasAuth(value: string | string[], type: "button" | "role" = "button") {
-  const { roles, perms } = useUserStore().userInfo;
-
-  // 超级管理员 拥有所有权限
-  if (type === "button" && roles.includes(ROLE_ROOT)) {
-    return true;
-  }
-
-  const auths = type === "button" ? perms : roles;
-  return typeof value === "string"
-    ? auths.includes(value)
-    : value.some((perm) => auths.includes(perm));
 }
